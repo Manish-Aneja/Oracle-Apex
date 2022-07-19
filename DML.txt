@@ -1,0 +1,106 @@
+SQL for drill down report
+select c.FIRSTNAME ||' '|| c.LASTNAME  ||  c.COMPANYNAME ||' '||c.city||' '||c.state customer,
+       count(*) Bookings,
+       min(b.FROMDATE) start_date,
+       max(b.TODATE) end_date,
+       sum(decode(STATUS,'Open',1,0)) open,
+       sum(decode(STATUS,'Closed',1,0)) closed,
+      sum(decode(STATUS,'Pending',1,0)) pending,
+      sum(decode(STATUS,'Confirmed',1,0)) Confirmed,   
+      sum(COST) total_cost
+from DB_customer c, db_booking b
+where c.customerid=b.FK4_CUSTOMERID 
+group by c.FIRSTNAME ||' '|| c.LASTNAME  ||  c.COMPANYNAME ||' '||c.city||' '||c.state
+
+
+SQL used for left join
+select * from (select b.FIRSTNAME||' '||b.LASTNAME||' '||b.COMPANYNAME as Customer ,b.CUSTOMERTYPE,a.HIREDAYS,b.COUNTRY,b.CUSTOMERID as FK3_CUSTOMERID
+from db_booking a,db_customer b
+where a.FK4_CUSTOMERID=b.CUSTOMERID)
+left join db_additionalaccessories using (FK3_CUSTOMERID)
+
+Monthly Revenue
+select
+    'Monthly Revenue' as label,
+     trim(to_char(nvl(sum(o.cost),0),'L99G999')) as value,
+    apex_util.prepare_url( 'f?p='||:APP_ID||':9:'||:APP_SESSION||':::9,RIR:IRGTE_ORDER_DATE:') as url
+from db_booking o
+where BOOKINGDATE >= to_date(to_char(sysdate,'YYYYMM')||'01','YYYYMMDD')
+Monthly bookings
+select 
+    'Monthly Bookings' as label,
+    trim(to_char(count(distinct o.bookingid),'999G999G999G999G990')) as value,
+    apex_util.prepare_url( 'f?p='||:APP_ID||':9:'||:APP_SESSION||':::9,RIR:IRGTE_ORDER_DATE:' ) as url
+from db_booking o
+where BOOKINGDATE >= to_date(to_char(sysdate,'YYYYMM')||'01','YYYYMMDD')
+Total Cars
+select 'Total Cars' as label,
+        trim(to_char(count(distinct p.MODALNAME),'999G999G999G999G990')) as value,
+        apex_util.prepare_url( 'f?p='||:APP_ID||':8:'||:APP_SESSION||':::' ) as url
+from db_car p
+
+Total Customer
+select 'Total Customers' as label,
+        trim(to_char(count(*),'999G999G999G999G990')) as value,
+        apex_util.prepare_url( 'f?p='||:APP_ID||':2:'||:APP_SESSION||':::' ) as url
+from db_CUSTOMER
+Top Bookings
+Select p.modalname||' - '||SUM(oi.HIREDAYS)||' Total HireDays x ' || to_char(p.rent,'L99G999')||' Hire Cost'||'' product,
+       SUM(oi.HIREDAYS)*p.rent sales,  p.carid
+from db_car p
+,    db_booking oi 
+where oi.FK1_CARID = p.carid
+group by p.carid, p.modalname,p.rent
+order by 2 desc
+Top Customer
+SELECT
+    b.FIRSTNAME ||' '|| b.LASTNAME  ||  b.COMPANYNAME list_title,
+    'fa-user' as icon,
+    nvl(SUM(a.cost),0) order_total,
+    count(a.bookingid) as order_cnt,
+    b.customerid id,
+    b.ADDRESS,
+    b.CITY,
+    b.STATE,
+    b.POSTALCODE,
+    b.EMAIL,
+    apex_page.get_url(p_page => 5,  p_items => 'P5_CUSTOMERID,P5_ADDRESS', p_values => b.customerid ||','|| '5') link,
+    ' ' link_attr,
+    ' ' link_class,
+    ' ' list_badge,
+    ' ' list_class,
+    ' ' list_text,
+    b.PHONE,
+    b.tags
+FROM
+    db_booking a,
+    db_CUSTOMER b
+WHERE
+    a.FK4_CUSTOMERID = b.customerid
+GROUP BY
+    b.customerid,
+    b.FIRSTNAME ||' '|| b.LASTNAME  ||  b.COMPANYNAME,
+    b.ADDRESS,
+    b.CITY,
+    b.STATE,
+    b.POSTALCODE,
+    b.EMAIL,
+    b.PHONE,
+    b.tags
+ORDER BY
+    3 DESC
+Bookings by cost
+select sum(COST),FIRSTNAME ||' '||LASTNAME||' '||COMPANYNAME Customer from db_customer a,db_booking b
+where a.CUSTOMERID=b.FK4_CUSTOMERID
+group by FIRSTNAME ||' '||LASTNAME||' '||COMPANYNAME
+Bookings by car model
+select count(BOOKINGID),b.MODALNAME from db_booking a,db_car b
+where b.carid = a.FK1_CARID
+ group by MODALNAME
+Hire days by Model Name
+select sum(HIREDAYS),MODALNAME from db_booking,db_car 
+where db_car.carid=db_booking.FK1_CARID
+group by MODALNAME
+
+Bookigs by country
+select count(*) ,HIRECOUNTRY from db_booking group by HIRECOUNTRY
